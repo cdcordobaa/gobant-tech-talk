@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Any, ClassVar
 import os
 
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import ffmpeg
 
 from src.tools.video_utils import extract_video_metadata, validate_video_file
@@ -20,21 +20,22 @@ class VideoMetadata(BaseModel):
     dimensions: Optional[Tuple[int, int]] = None  # (width, height)
     creation_date: Optional[datetime] = None
     
-    @validator('file_path')
+    @field_validator('file_path')
+    @classmethod
     def validate_file_exists(cls, v):
         """Ensure the video file exists."""
         if not os.path.isfile(v):
             raise ValueError(f"Video file not found: {v}")
         return v
     
-    @root_validator(skip_on_failure=True)
-    def extract_title_from_filename(cls, values):
+    @model_validator(mode='after')
+    def extract_title_from_filename(self):
         """Extract title from filename if not provided."""
-        if values.get('title') is None and values.get('file_path'):
-            filename = os.path.basename(values['file_path'])
+        if self.title is None and self.file_path:
+            filename = os.path.basename(self.file_path)
             title, _ = os.path.splitext(filename)
-            values['title'] = title
-        return values
+            self.title = title
+        return self
     
     @classmethod
     def from_file(cls, file_path: str) -> 'VideoMetadata':
@@ -58,14 +59,16 @@ class VideoMoment(BaseModel):
     description: str
     engagement_score: float = 0.0
     
-    @validator('end_time')
-    def end_time_must_be_after_start_time(cls, v, values):
+    @field_validator('end_time')
+    @classmethod
+    def end_time_must_be_after_start_time(cls, v, info):
         """Ensure end_time is greater than start_time."""
-        if 'start_time' in values and v <= values['start_time']:
+        if 'start_time' in info.data and v <= info.data['start_time']:
             raise ValueError('end_time must be greater than start_time')
         return v
     
-    @validator('start_time')
+    @field_validator('start_time')
+    @classmethod
     def start_time_must_be_positive(cls, v):
         """Ensure start_time is positive."""
         if v < 0:
