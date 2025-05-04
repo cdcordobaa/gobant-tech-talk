@@ -39,6 +39,9 @@ output/
 exports/
 generated/
 
+# Input directories
+input_videos/
+
 # Video files
 *.mp4
 *.mov
