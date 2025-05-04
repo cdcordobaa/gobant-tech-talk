@@ -1,0 +1,50 @@
+# Environment files
+.env
+venv/
+env/
+ENV/
+.venv/
+.python-version
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+temp/
+tmp/
+.DS_Store
+
+# Output directories
+output/
+exports/
+generated/
+
+# Video files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wmv
+
+# API key files
+*.key 

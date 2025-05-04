@@ -1,0 +1,25 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Throughout this implementation process, prioritize minimal, concise, functional code that works correctly. Follow these core principles:
+
+1. SIMPLICITY FIRST: Create the simplest possible implementation that demonstrates the concept. Avoid over-engineering, unnecessary abstractions, or "future-proofing" code.
+
+2. CONCRETE OVER ABSTRACT: Use concrete, specific implementations rather than complex abstract patterns. Favor direct, clear code over elegant but complex solutions.
+
+3. MINIMAL DEPENDENCIES: Only import what's absolutely necessary. Avoid introducing dependencies not explicitly requested.
+
+4. FUNCTIONING > PERFECT: Prioritize code that works over code that's perfectly structured. We can refine later if needed.
+
+5. FOCUSED SCOPE: Implement exactly what's described in the prompt and nothing more. Do not add extra features, error handling, or edge cases unless explicitly requested.
+
+6. NO STUB CODE: Generate complete, working implementations rather than skeleton code with TODOs.
+
+7. NO UNSOLICITED REFACTORING: Don't suggest refactoring or improvements unless specifically asked.
+
+8. STANDARD PATTERNS: Use standard Python patterns and idioms. Avoid overly clever or obscure techniques.
+
+
+These principles apply to all implementation steps. When in doubt, opt for the simpler, more direct approach that gets the job done with minimal code.
