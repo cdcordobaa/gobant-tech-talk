@@ -1,0 +1,231 @@
+{
+  "video_path": "input_videos/El A\u00f1o en que la IA Redefini\u00f3 L\u00edmites.mp4",
+  "current_stage": 4,
+  "stages_completed": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "stage_names": {
+    "0": {
+      "name": "extract_frames",
+      "description": "Extract key frames from video"
+    },
+    "1": {
+      "name": "analyze_frames",
+      "description": "Analyze extracted frames"
+    },
+    "2": {
+      "name": "detect_moments",
+      "description": "Detect interesting moments from analysis"
+    },
+    "3": {
+      "name": "generate_report",
+      "description": "Generate final analysis report"
+    }
+  },
+  "data": {
+    "0": {
+      "frames": [
+        "frame_0.jpg",
+        "frame_1.jpg",
+        "frame_2.jpg",
+        "frame_3.jpg",
+        "frame_4.jpg",
+        "frame_5.jpg",
+        "frame_6.jpg",
+        "frame_7.jpg",
+        "frame_8.jpg",
+        "frame_9.jpg"
+      ]
+    },
+    "1": {
+      "analysis_results": {
+        "langgraph_processed": true,
+        "moments_found": 4,
+        "moments_selected": 4,
+        "processed_at": 1746425417
+      },
+      "moments": [
+        {
+          "start_time": 237.0,
+          "end_time": 251.0,
+          "description": "The speaker explains the GPT-4 model and its capabilities.",
+          "engagement_score": 0.5
+        },
+        {
+          "start_time": 256.0,
+          "end_time": 310.0,
+          "description": "The speaker shows a demonstration of the LINGO 1 model for autonomous driving.",
+          "engagement_score": 0.5
+        },
+        {
+          "start_time": 336.0,
+          "end_time": 351.0,
+          "description": "The speaker shows a demonstration of the Instruct Pix2Pix model for image generation.",
+          "engagement_score": 0.5
+        },
+        {
+          "start_time": 449.0,
+          "end_time": 463.0,
+          "description": "The speaker shows a demonstration of the Med-PaLM 2 model for medical questions and answers.",
+          "engagement_score": 0.5
+        }
+      ],
+      "selected_moments": [
+        {
+          "start_time": 237.0,
+          "end_time": 251.0,
+          "description": "The speaker explains the GPT-4 model and its capabilities.",
+          "engagement_score": 0.5,
+          "selection_reason": "Short, focused clip suitable for social media with good engagement potential",
+          "engagement_prediction": 0.75,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "tiktok",
+            "twitter",
+            "instagram"
+          ]
+        },
+        {
+          "start_time": 256.0,
+          "end_time": 310.0,
+          "description": "The speaker shows a demonstration of the LINGO 1 model for autonomous driving.",
+          "engagement_score": 0.5,
+          "selection_reason": "Detailed segment with comprehensive content with good engagement potential",
+          "engagement_prediction": 0.7999999999999999,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "twitter",
+            "linkedin",
+            "instagram"
+          ]
+        },
+        {
+          "start_time": 336.0,
+          "end_time": 351.0,
+          "description": "The speaker shows a demonstration of the Instruct Pix2Pix model for image generation.",
+          "engagement_score": 0.5,
+          "selection_reason": "Optimal length for social sharing with good engagement potential",
+          "engagement_prediction": 0.7999999999999999,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "tiktok",
+            "twitter",
+            "instagram"
+          ]
+        },
+        {
+          "start_time": 449.0,
+          "end_time": 463.0,
+          "description": "The speaker shows a demonstration of the Med-PaLM 2 model for medical questions and answers.",
+          "engagement_score": 0.5,
+          "selection_reason": "Short, focused clip suitable for social media with good engagement potential",
+          "engagement_prediction": 0.7999999999999999,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "tiktok",
+            "twitter",
+            "instagram"
+          ]
+        }
+      ]
+    },
+    "2": {
+      "moments": [
+        {
+          "start_time": 237.0,
+          "end_time": 251.0,
+          "description": "The speaker explains the GPT-4 model and its capabilities.",
+          "engagement_score": 0.5
+        },
+        {
+          "start_time": 256.0,
+          "end_time": 310.0,
+          "description": "The speaker shows a demonstration of the LINGO 1 model for autonomous driving.",
+          "engagement_score": 0.5
+        },
+        {
+          "start_time": 336.0,
+          "end_time": 351.0,
+          "description": "The speaker shows a demonstration of the Instruct Pix2Pix model for image generation.",
+          "engagement_score": 0.5
+        },
+        {
+          "start_time": 449.0,
+          "end_time": 463.0,
+          "description": "The speaker shows a demonstration of the Med-PaLM 2 model for medical questions and answers.",
+          "engagement_score": 0.5
+        }
+      ],
+      "selected_moments": [
+        {
+          "start_time": 237.0,
+          "end_time": 251.0,
+          "description": "The speaker explains the GPT-4 model and its capabilities.",
+          "engagement_score": 0.5,
+          "selection_reason": "Short, focused clip suitable for social media with good engagement potential",
+          "engagement_prediction": 0.75,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "tiktok",
+            "twitter",
+            "instagram"
+          ]
+        },
+        {
+          "start_time": 256.0,
+          "end_time": 310.0,
+          "description": "The speaker shows a demonstration of the LINGO 1 model for autonomous driving.",
+          "engagement_score": 0.5,
+          "selection_reason": "Detailed segment with comprehensive content with good engagement potential",
+          "engagement_prediction": 0.7999999999999999,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "twitter",
+            "linkedin",
+            "instagram"
+          ]
+        },
+        {
+          "start_time": 336.0,
+          "end_time": 351.0,
+          "description": "The speaker shows a demonstration of the Instruct Pix2Pix model for image generation.",
+          "engagement_score": 0.5,
+          "selection_reason": "Optimal length for social sharing with good engagement potential",
+          "engagement_prediction": 0.7999999999999999,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "tiktok",
+            "twitter",
+            "instagram"
+          ]
+        },
+        {
+          "start_time": 449.0,
+          "end_time": 463.0,
+          "description": "The speaker shows a demonstration of the Med-PaLM 2 model for medical questions and answers.",
+          "engagement_score": 0.5,
+          "selection_reason": "Short, focused clip suitable for social media with good engagement potential",
+          "engagement_prediction": 0.7999999999999999,
+          "content_category": "tutorial",
+          "target_platforms": [
+            "tiktok",
+            "twitter",
+            "instagram"
+          ]
+        }
+      ]
+    },
+    "3": {
+      "report_path": "output/report.html"
+    }
+  },
+  "metadata": {
+    "start_time": 1746425355,
+    "last_updated": 1746425418,
+    "version": "1.0"
+  },
+  "errors": []
+}

@@ -201,10 +201,27 @@ def main():
         print(f"Error: {result['error']}")
         sys.exit(1)
     
-    # Print analysis results to console
-    print(f"Analysis complete. Found {len(result['moments'])} interesting moments:")
-    for i, moment in enumerate(result["moments"]):
-        print(f"Moment {i+1}: {moment.start_time:.1f}s to {moment.end_time:.1f}s - {moment.description}")
+    # Print identified moments
+    moments = result.get("moments", [])
+    print(f"\nAnalysis complete. Found {len(moments)} interesting moments:")
+    print("-" * 80)
+    for i, moment in enumerate(moments, 1):
+        print(f"Moment {i}: {moment.start_time_str} - {moment.end_time_str} ({moment.duration:.1f}s)")
+        print(f"  Description: {moment.description}")
+    
+    # Print selected moments with additional information
+    selected_moments = result.get("selected_moments", [])
+    if selected_moments:
+        print(f"\nSelected {len(selected_moments)} moments for content creation:")
+        print("-" * 80)
+        for i, moment in enumerate(selected_moments, 1):
+            print(f"Selected Moment {i}: {moment.start_time_str} - {moment.end_time_str} ({moment.duration:.1f}s)")
+            print(f"  Description: {moment.description}")
+            print(f"  Selection Reason: {moment.selection_reason}")
+            print(f"  Engagement Prediction: {moment.engagement_prediction:.2f}")
+            print(f"  Content Category: {moment.content_category}")
+            print(f"  Target Platforms: {', '.join(moment.target_platforms)}")
+            print()
     
     # Skip report generation if requested
     if args.no_report:

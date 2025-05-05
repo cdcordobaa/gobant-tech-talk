@@ -16,8 +16,9 @@ sys.path.insert(0, str(project_root))
 
 from langgraph.graph import StateGraph, START, END
 from src.agents.video_analysis import video_analysis_agent
+from src.agents.moment_selection import moment_selection_agent
 from src.utils.checkpoint_manager import CheckpointManager
-from src.models.state import VideoMoment
+from src.models.state import VideoMoment, SelectedMoment
 
 # Define pipeline stage type
 class PipelineStage:
@@ -36,6 +37,7 @@ class PipelineState(TypedDict):
     video_path: str
     api_key: str
     moments: List[VideoMoment]
+    selected_moments: Optional[List[Any]]
     error: Optional[str]
     frames_extracted: Optional[List[str]]
     analysis_results: Optional[Dict[str, Any]]
@@ -171,10 +173,12 @@ def create_langgraph_workflow():
     
     # Add the video analysis node
     workflow.add_node("analyze_video", video_analysis_agent)
+    workflow.add_node("select_moments", moment_selection_agent)
     
     # Define the flow
     workflow.add_edge(START, "analyze_video")
-    workflow.add_edge("analyze_video", END)
+    workflow.add_edge("analyze_video", "select_moments")
+    workflow.add_edge("select_moments", END)
     
     # Compile and return the graph
     return workflow.compile()
@@ -223,6 +227,10 @@ def analyze_frames_langgraph(state: PipelineState, checkpoint_mgr: CheckpointMan
         # Extract moments from LangGraph result
         if "moments" in result:
             state["moments"] = result["moments"]
+            
+        # Extract selected moments if available
+        if "selected_moments" in result:
+            state["selected_moments"] = result["selected_moments"]
         
         # Handle potential error
         if "error" in result and result["error"]:
@@ -235,6 +243,7 @@ def analyze_frames_langgraph(state: PipelineState, checkpoint_mgr: CheckpointMan
         analysis_results = {
             "langgraph_processed": True,
             "moments_found": len(result.get("moments", [])),
+            "moments_selected": len(result.get("selected_moments", [])),
             "processed_at": int(time.time())
         }
         state["analysis_results"] = analysis_results
@@ -242,13 +251,15 @@ def analyze_frames_langgraph(state: PipelineState, checkpoint_mgr: CheckpointMan
         # Store data in checkpoint
         stage_data = {
             "analysis_results": analysis_results,
-            "moments": [moment.__dict__ for moment in result.get("moments", [])]
+            "moments": [moment.__dict__ for moment in result.get("moments", [])],
+            "selected_moments": [moment.__dict__ for moment in result.get("selected_moments", [])]
         }
         checkpoint_mgr.mark_stage_complete(STAGE_ANALYZE_FRAMES, "analyze_frames", stage_data)
         
         # Skip the detect_moments stage since LangGraph already did it
         checkpoint_mgr.mark_stage_complete(STAGE_DETECT_MOMENTS, "detect_moments", 
-                                          {"moments": [m.__dict__ for m in result.get("moments", [])]})
+                                          {"moments": [m.__dict__ for m in result.get("moments", [])],
+                                           "selected_moments": [m.__dict__ for m in result.get("selected_moments", [])]})
         
     except Exception as e:
         error_msg = f"LangGraph analysis failed: {str(e)}"
@@ -342,6 +353,26 @@ def generate_report(state: PipelineState, checkpoint_mgr: CheckpointManager) -> 
         state["error"] = error_msg
         return state
     
+    # Also try to get selected moments if not already in state
+    if not state.get("selected_moments"):
+        # Try to get from analyze_frames checkpoint first (LangGraph path)
+        stage_data = checkpoint_mgr.get_stage_data(STAGE_ANALYZE_FRAMES)
+        if stage_data and "selected_moments" in stage_data:
+            # Convert back to SelectedMoment objects
+            from src.models.state import SelectedMoment
+            moment_dicts = stage_data["selected_moments"]
+            selected_moments = [SelectedMoment(**m) for m in moment_dicts]
+            state["selected_moments"] = selected_moments
+        # Then try detect_moments checkpoint
+        else:
+            stage_data = checkpoint_mgr.get_stage_data(STAGE_DETECT_MOMENTS)
+            if stage_data and "selected_moments" in stage_data:
+                # Convert back to SelectedMoment objects
+                from src.models.state import SelectedMoment
+                moment_dicts = stage_data["selected_moments"]
+                selected_moments = [SelectedMoment(**m) for m in moment_dicts]
+                state["selected_moments"] = selected_moments
+    
     # Simulate report generation
     time.sleep(1)
     
@@ -404,6 +435,7 @@ def run_pipeline(
         "video_path": video_path,
         "api_key": api_key,
         "moments": [],
+        "selected_moments": None,
         "error": None,
         "frames_extracted": None,
         "analysis_results": None,
@@ -422,10 +454,16 @@ def run_pipeline(
                     # Also check for moments in case LangGraph was used
                     if "moments" in stage_data:
                         state["moments"] = [VideoMoment(**m) for m in stage_data["moments"]]
+                    # Also check for selected moments
+                    if "selected_moments" in stage_data:
+                        state["selected_moments"] = [SelectedMoment(**m) for m in stage_data["selected_moments"]]
                 elif stage.index == STAGE_DETECT_MOMENTS and "moments" in stage_data:
                     # Convert moment dicts back to objects
                     moment_dicts = stage_data["moments"]
                     state["moments"] = [VideoMoment(**m) for m in moment_dicts]
+                    # Also check for selected moments
+                    if "selected_moments" in stage_data:
+                        state["selected_moments"] = [SelectedMoment(**m) for m in stage_data["selected_moments"]]
                 elif stage.index == STAGE_GENERATE_REPORT and "report_path" in stage_data:
                     state["report_path"] = stage_data["report_path"]
     

@@ -95,11 +95,21 @@ class VideoMoment(BaseModel):
         return self.end_time - self.start_time
 
 
+class SelectedMoment(VideoMoment):
+    """A moment that has been selected for further processing."""
+    
+    selection_reason: str
+    engagement_prediction: float
+    content_category: str
+    target_platforms: List[str] = Field(default_factory=list)
+
+
 class WorkflowState(BaseModel):
     """Main workflow state tracking all processing steps and data."""
     
     input_video: VideoMetadata
     identified_moments: List[VideoMoment] = Field(default_factory=list)
+    selected_moments: List[SelectedMoment] = Field(default_factory=list)
     status: str = "initialized"
     errors: List[str] = Field(default_factory=list)
     execution_log: List[Dict[str, Any]] = Field(default_factory=list)

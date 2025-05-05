@@ -203,6 +203,12 @@ def generate_html_report(video_path, result, thumbnails=None):
     
     # Generate HTML report
     moments = result.get("moments", [])
+    selected_moments = result.get("selected_moments", [])
+    
+    # Ensure selected_moments is never None
+    if selected_moments is None:
+        selected_moments = []
+    
     html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -296,6 +302,10 @@ def generate_html_report(video_path, result, thumbnails=None):
             border-radius: 5px;
             overflow: hidden;
         }}
+        .selected-moment-card {{
+            border: 2px solid #4caf50;
+            background-color: #f1f8e9;
+        }}
         .moment-thumb {{
             width: 100%;
             height: 180px;
@@ -311,6 +321,72 @@ def generate_html_report(video_path, result, thumbnails=None):
         }}
         .moment-desc {{
             margin: 0;
+        }}
+        .badge {{
+            display: inline-block;
+            padding: 3px 7px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            background-color: #e0e0e0;
+        }}
+        .badge-platform {{
+            background-color: #bbdefb;
+            color: #1565c0;
+        }}
+        .badge-category {{
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }}
+        .engagement-score {{
+            display: inline-block;
+            width: 100%;
+            height: 6px;
+            background-color: #eee;
+            border-radius: 3px;
+            margin: 8px 0;
+            position: relative;
+        }}
+        .engagement-score-bar {{
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #f44336, #ffeb3b, #4caf50);
+        }}
+        .reason-section {{
+            font-style: italic;
+            color: #555;
+            margin: 8px 0;
+            font-size: 14px;
+        }}
+        .tabs {{
+            display: flex;
+            margin-bottom: 20px;
+        }}
+        .tab {{
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }}
+        .tab.active {{
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }}
+        .tab-content {{
+            display: none;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 0 5px 5px 5px;
+        }}
+        .tab-content.active {{
+            display: block;
         }}
     </style>
 </head>
@@ -329,11 +405,16 @@ def generate_html_report(video_path, result, thumbnails=None):
     <h2>Timeline Visualization</h2>
     {generate_timeline_html(metadata, moments)}
     
-    <h2>Identified Moments ({len(moments)})</h2>
-    <div class="moments-container">
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('all-moments')">All Moments ({len(moments)})</div>
+        <div class="tab" onclick="showTab('selected-moments')">Selected Moments ({len(selected_moments)})</div>
+    </div>
+    
+    <div id="all-moments" class="tab-content active">
+        <div class="moments-container">
     """
     
-    # Add moment cards
+    # Add moment cards for all identified moments
     for i, moment in enumerate(moments):
         thumb_path = report_thumbnails.get(i, "")
         thumb_html = f'<img src="{thumb_path}" class="moment-thumb" alt="Moment {i+1}">' if thumb_path else ""
@@ -358,7 +439,83 @@ def generate_html_report(video_path, result, thumbnails=None):
         """
     
     html += """
+        </div>
     </div>
+    
+    <div id="selected-moments" class="tab-content">
+        <div class="moments-container">
+    """
+    
+    # Add moment cards for selected moments with additional metadata
+    for i, moment in enumerate(selected_moments):
+        # Try to find matching thumbnail from original moments list
+        matching_moment_idx = next((idx for idx, m in enumerate(moments) 
+                                   if m.start_time == moment.start_time and m.end_time == moment.end_time), 
+                                  None)
+        
+        thumb_path = report_thumbnails.get(matching_moment_idx, "") if matching_moment_idx is not None else ""
+        thumb_html = f'<img src="{thumb_path}" class="moment-thumb" alt="Selected Moment {i+1}">' if thumb_path else ""
+        
+        start_mins = int(moment.start_time // 60)
+        start_secs = int(moment.start_time % 60)
+        end_mins = int(moment.end_time // 60)
+        end_secs = int(moment.end_time % 60)
+        duration = moment.end_time - moment.start_time
+        
+        # Platform badges
+        platform_badges = ""
+        for platform in moment.target_platforms:
+            platform_badges += f'<span class="badge badge-platform">{platform}</span>'
+        
+        # Engagement score bar
+        engagement_width = int(moment.engagement_prediction * 100)
+        engagement_html = f"""
+        <div class="engagement-score">
+            <div class="engagement-score-bar" style="width: {engagement_width}%"></div>
+        </div>
+        <div style="text-align: right; font-size: 12px;">Engagement: {moment.engagement_prediction:.2f}</div>
+        """
+        
+        html += f"""
+        <div class="moment-card selected-moment-card">
+            {thumb_html}
+            <div class="moment-info">
+                <h3>Selected Moment {i+1}</h3>
+                <div class="moment-time">
+                    {start_mins:02d}:{start_secs:02d} - {end_mins:02d}:{end_secs:02d} (Duration: {duration:.1f}s)
+                </div>
+                <p class="moment-desc">{moment.description}</p>
+                <div class="reason-section">{moment.selection_reason}</div>
+                {engagement_html}
+                <div>
+                    <span class="badge badge-category">{moment.content_category}</span>
+                    {platform_badges}
+                </div>
+            </div>
+        </div>
+        """
+    
+    html += """
+        </div>
+    </div>
+    
+    <script>
+    function showTab(tabId) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // Deactivate all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Activate selected tab and content
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+    }
+    </script>
 </body>
 </html>
     """
