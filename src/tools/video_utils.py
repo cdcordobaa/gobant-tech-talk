@@ -117,11 +117,16 @@ def extract_thumbnail(video_path: str, timestamp: float, output_path: Optional[s
         # Make sure the output directory exists
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         
-        # Extract the frame
+        # Extract the frame with corrected encoding parameters
         (
             ffmpeg
             .input(video_path, ss=timestamp)
-            .output(output_path, vframes=1)
+            .output(
+                output_path, 
+                vframes=1,
+                pix_fmt='yuvj420p',  # Use full-range YUV pixel format
+                strict='unofficial'   # Set compliance level to unofficial
+            )
             .overwrite_output()
             .run(capture_stdout=True, capture_stderr=True)
         )
