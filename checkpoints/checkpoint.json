@@ -1,0 +1,70 @@
+{
+  "current_stage": 4,
+  "stages_completed": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "data": {
+    "0": {
+      "frames": [
+        "frame_0.jpg",
+        "frame_1.jpg",
+        "frame_2.jpg",
+        "frame_3.jpg",
+        "frame_4.jpg",
+        "frame_5.jpg",
+        "frame_6.jpg",
+        "frame_7.jpg",
+        "frame_8.jpg",
+        "frame_9.jpg"
+      ]
+    },
+    "1": {
+      "analysis_results": {
+        "detected_objects": [
+          "person",
+          "car",
+          "dog"
+        ],
+        "scene_types": [
+          "outdoor",
+          "city"
+        ],
+        "activity_level": "high"
+      }
+    },
+    "2": {
+      "moments": [
+        {
+          "start_time": 10.0,
+          "end_time": 15.0,
+          "description": "Person walking with dog",
+          "engagement_score": 0.0
+        },
+        {
+          "start_time": 30.0,
+          "end_time": 40.0,
+          "description": "Car driving through city",
+          "engagement_score": 0.0
+        },
+        {
+          "start_time": 60.0,
+          "end_time": 70.0,
+          "description": "Outdoor activity with high movement",
+          "engagement_score": 0.0
+        }
+      ]
+    },
+    "3": {
+      "report_path": "output/report.html"
+    }
+  },
+  "metadata": {
+    "start_time": 1746419988,
+    "last_updated": 1746419993,
+    "version": "1.0"
+  },
+  "errors": []
+}
