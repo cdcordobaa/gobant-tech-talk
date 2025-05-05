@@ -1,12 +1,14 @@
 """State models for workflow data processing."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Any, ClassVar
 import os
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 import ffmpeg
+from dataclasses import dataclass, field
+from PIL import Image
 
 from src.tools.video_utils import extract_video_metadata, validate_video_file
 
@@ -95,34 +97,133 @@ class VideoMoment(BaseModel):
         return self.end_time - self.start_time
 
 
-class SelectedMoment(VideoMoment):
-    """A moment that has been selected for further processing."""
-    
+@dataclass
+class SelectedMoment:
+    """Represents a moment selected for potential content creation."""
+    start_time: float
+    end_time: float
+    description: str
     selection_reason: str
     engagement_prediction: float
     content_category: str
-    target_platforms: List[str] = Field(default_factory=list)
+    target_platforms: list[str]  # Added from initial selection logic
+    frame_paths: List[str] = field(default_factory=list)
+    thumbnail_path: Optional[str] = None
+
+    @property
+    def duration(self) -> float:
+        return self.end_time - self.start_time
+
+    @property
+    def start_time_str(self) -> str:
+        return str(timedelta(seconds=int(self.start_time)))
+
+    @property
+    def end_time_str(self) -> str:
+        return str(timedelta(seconds=int(self.end_time)))
 
 
-class WorkflowState(BaseModel):
-    """Main workflow state tracking all processing steps and data."""
-    
-    input_video: VideoMetadata
-    identified_moments: List[VideoMoment] = Field(default_factory=list)
-    selected_moments: List[SelectedMoment] = Field(default_factory=list)
-    status: str = "initialized"
-    errors: List[str] = Field(default_factory=list)
-    execution_log: List[Dict[str, Any]] = Field(default_factory=list)
-    
-    def add_log_entry(self, action: str, details: Dict[str, Any] = None) -> None:
-        """Add a timestamped log entry to the execution log."""
-        if details is None:
-            details = {}
-            
-        entry = {
-            "timestamp": datetime.now(),
-            "action": action,
-            **details
+@dataclass
+class PlatformRequirements:
+    """Specifies the technical requirements for a specific platform."""
+    platform_name: str
+    aspect_ratio: str  # e.g., "1:1", "9:16", "16:9"
+    max_duration: float  # seconds
+    optimal_format: str  # e.g., "square", "vertical", "landscape"
+    resolution: tuple[int, int]  # (width, height)
+
+
+@dataclass
+class PlatformContent:
+    """Represents a piece of content tailored for a specific platform."""
+    platform: str
+    source_moment: SelectedMoment
+    target_specs: PlatformRequirements
+    output_path: Optional[str] = None
+    processing_status: str = "pending"  # e.g., pending, formatting_specs_defined, processing, complete, failed
+    ffmpeg_params: Optional[dict[str, Any]] = None # To store cropping, resizing params etc.
+    preview_thumbnail_path: Optional[str] = None # Path for formatted preview
+
+
+# Define platform constants
+PLATFORM_INSTAGRAM = "Instagram"
+PLATFORM_TIKTOK = "TikTok"
+PLATFORM_LINKEDIN = "LinkedIn"
+
+SUPPORTED_PLATFORMS = [PLATFORM_INSTAGRAM, PLATFORM_TIKTOK, PLATFORM_LINKEDIN]
+
+
+@dataclass
+class WorkflowState:
+    """Represents the state of the video analysis workflow."""
+    video_path: str
+    api_key: str # Added API Key to state
+    frames_dir: Optional[str] = None
+    frame_paths: List[str] = field(default_factory=list)
+    frame_analysis: List[dict] = field(default_factory=list) # Analysis per frame
+    analysis_summary: Optional[str] = None
+    moments: List[VideoMoment] = field(default_factory=list) # Initially identified moments
+    selected_moments: List[SelectedMoment] = field(default_factory=list) # Moments selected for content creation
+    platform_content: Dict[str, List[PlatformContent]] = field(default_factory=lambda: {p: [] for p in SUPPORTED_PLATFORMS}) # Content formatted per platform
+    report_path: Optional[str] = None
+    error: Optional[str] = None
+    current_stage: Optional[str] = None # Name of the current stage running
+    stages_completed: List[str] = field(default_factory=list) # Names of stages completed
+    checkpoint_data: Dict[str, Any] = field(default_factory=dict) # Data to save/load from checkpoint
+
+    def update_checkpoint(self):
+        """Prepares data for checkpointing."""
+        # Exclude non-serializable or large data if necessary
+        self.checkpoint_data = {
+            "video_path": self.video_path,
+            "frames_dir": self.frames_dir,
+            "frame_paths": self.frame_paths,
+            "frame_analysis": self.frame_analysis, # Consider if this gets too large
+            "analysis_summary": self.analysis_summary,
+            "moments": [m.__dict__ for m in self.moments],
+            "selected_moments": [sm.__dict__ for sm in self.selected_moments],
+            # Use __dict__ for now, assuming nested dataclasses are serializable enough for checkpoint
+            "platform_content": {p: [pc.__dict__ for pc in pcs] for p, pcs in self.platform_content.items()},
+            "report_path": self.report_path,
+            "current_stage": self.current_stage,
+            "stages_completed": self.stages_completed,
+            # Don't save api_key in checkpoint for security
         }
-        
-        self.execution_log.append(entry) 
+
+    @classmethod
+    def from_checkpoint(cls, data: Dict[str, Any]) -> 'WorkflowState':
+        """Creates WorkflowState from checkpoint data."""
+        # API key should be re-injected after loading, not loaded from checkpoint
+        state = cls(video_path=data.get("video_path"), api_key="") # Initialize with empty key
+        state.frames_dir = data.get("frames_dir")
+        state.frame_paths = data.get("frame_paths", [])
+        state.frame_analysis = data.get("frame_analysis", [])
+        state.analysis_summary = data.get("analysis_summary")
+        state.moments = [VideoMoment(**m) for m in data.get("moments", [])]
+        state.selected_moments = [SelectedMoment(**sm) for sm in data.get("selected_moments", [])]
+
+        # Reconstruct platform_content carefully
+        raw_platform_content = data.get("platform_content", {})
+        platform_content = {p: [] for p in SUPPORTED_PLATFORMS}
+        for platform, content_list in raw_platform_content.items():
+             if platform in platform_content:
+                 for content_data in content_list:
+                     # Reconstruct nested objects
+                     source_moment_data = content_data.pop("source_moment", {})
+                     target_specs_data = content_data.pop("target_specs", {})
+                     if source_moment_data and target_specs_data:
+                         # Ensure nested dataclasses are reconstructed if needed
+                         content_data["source_moment"] = SelectedMoment(**source_moment_data)
+                         content_data["target_specs"] = PlatformRequirements(**target_specs_data)
+                         platform_content[platform].append(PlatformContent(**content_data))
+                     else:
+                         print(f"Warning: Skipping platform content reconstruction due to missing data: {content_data}")
+                         
+        state.platform_content = platform_content
+
+        state.report_path = data.get("report_path")
+        state.current_stage = data.get("current_stage")
+        state.stages_completed = data.get("stages_completed", [])
+        # Store the loaded data itself in checkpoint_data for potential reuse/inspection
+        state.checkpoint_data = data
+        return state 

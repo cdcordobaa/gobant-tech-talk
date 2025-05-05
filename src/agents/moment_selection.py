@@ -4,11 +4,13 @@ import os
 import sys
 from typing import Dict, Any, List
 from pathlib import Path
+import logging
 
 # Add the project root directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.models.state import VideoMoment, SelectedMoment
+# Import WorkflowState along with moment types
+from src.models.state import VideoMoment, SelectedMoment, WorkflowState
 
 def calculate_engagement_score(moment: VideoMoment) -> float:
     """
@@ -129,57 +131,76 @@ def determine_suitable_platforms(moment: VideoMoment) -> List[str]:
     # Remove duplicates and return
     return list(set(platforms))
 
-def moment_selection_agent(state: Dict[str, Any]) -> Dict[str, Any]:
+def moment_selection_agent(state: WorkflowState) -> WorkflowState:
     """
     Agent function that selects the most promising moments for processing.
+    Uses heuristic scoring based on moment properties.
     
     Args:
-        state: Dictionary containing the current state with identified moments
+        state: WorkflowState object containing identified moments.
         
     Returns:
-        Updated state dictionary with selected moments
+        The modified WorkflowState object with selected moments.
     """
+    logging.info("Starting moment selection process...")
     try:
-        # Get previously identified moments
-        identified_moments = state.get("identified_moments", [])
+        # Get identified moments directly from state attribute
+        identified_moments = state.moments
         
-        # Check if moments exist in the "moments" field (for compatibility)
-        if not identified_moments and "moments" in state:
-            identified_moments = state["moments"]
+        if not identified_moments:
+            logging.warning("No moments identified in the state to select from.")
+            state.selected_moments = []
+            state.error = None # Not an error if no moments were found previously
+            return state
             
-        selected_moments = []
+        selected_moments_list: List[SelectedMoment] = []
         
         # Score and select the best moments
+        logging.info(f"Evaluating {len(identified_moments)} identified moments...")
         for moment in identified_moments:
+            # Ensure it's a VideoMoment (or has necessary attributes)
+            if not hasattr(moment, 'start_time') or not hasattr(moment, 'end_time') or not hasattr(moment, 'description'):
+                logging.warning(f"Skipping invalid moment object: {moment}")
+                continue
+
             score = calculate_engagement_score(moment)
             
-            # Only select moments with good potential
+            # Selection threshold
             if score > 0.6:
+                logging.info(f"  Selecting moment ({moment.start_time_str} - {moment.end_time_str}) with score {score:.2f}")
                 selected = SelectedMoment(
                     start_time=moment.start_time,
                     end_time=moment.end_time,
                     description=moment.description,
-                    engagement_score=moment.engagement_score,
                     engagement_prediction=score,
                     selection_reason=generate_selection_reason(moment, score),
                     content_category=determine_content_category(moment),
                     target_platforms=determine_suitable_platforms(moment)
                 )
-                selected_moments.append(selected)
+                selected_moments_list.append(selected)
+            else:
+                 logging.debug(f"  Skipping moment ({moment.start_time_str} - {moment.end_time_str}) with score {score:.2f}")
+
+        # Update state using attribute access
+        state.selected_moments = selected_moments_list
+        logging.info(f"Selected {len(selected_moments_list)} moments.")
         
-        # Update state
-        state["selected_moments"] = selected_moments
+        # Clear previous error if successful
+        state.error = None
         return state
         
     except Exception as e:
-        state["error"] = f"Error in moment selection: {str(e)}"
+        error_msg = f"Error in moment selection: {str(e)}"
+        logging.exception(f"Moment Selection Agent Exception: {error_msg}") # Log traceback
+        state.error = error_msg
+        state.selected_moments = [] # Ensure empty on error
         return state
 
 # Simple test function to directly test the agent
 def test_moment_selection_agent():
     """Test the moment selection agent with sample moments."""
     # Create test moments
-    test_moments = [
+    test_moments_list = [
         VideoMoment(
             start_time=10.0, 
             end_time=25.0, 
@@ -197,20 +218,22 @@ def test_moment_selection_agent():
         )
     ]
     
-    # Create a test state
-    test_state = {
-        "identified_moments": test_moments
-    }
+    # Create a test state using WorkflowState
+    test_wf_state = WorkflowState(
+        video_path="dummy/path", # Not used by this agent directly
+        api_key="dummy_key", # Not used by this agent directly
+        moments=test_moments_list # Set the moments
+    )
     
     # Call the agent
-    result_state = moment_selection_agent(test_state)
+    result_state = moment_selection_agent(test_wf_state)
     
     # Print the results
-    if "error" in result_state:
-        print(f"Error: {result_state['error']}")
+    if result_state.error:
+        print(f"Error: {result_state.error}")
     else:
-        print(f"Selected {len(result_state['selected_moments'])} moments from {len(test_moments)} identified moments:")
-        for i, moment in enumerate(result_state["selected_moments"]):
+        print(f"Selected {len(result_state.selected_moments)} moments from {len(test_moments_list)} identified moments:")
+        for i, moment in enumerate(result_state.selected_moments):
             print(f"Selected Moment {i+1}: {moment.start_time_str} - {moment.end_time_str}")
             print(f"  Description: {moment.description}")
             print(f"  Engagement: {moment.engagement_prediction:.2f}")
@@ -220,4 +243,7 @@ def test_moment_selection_agent():
             print()
 
 if __name__ == "__main__":
-    test_moment_selection_agent() 
+    logging.basicConfig(level=logging.INFO)
+    print("Running moment_selection_agent test...")
+    # test_moment_selection_agent() # Comment out direct execution
+    print("Test function defined. Run manually if needed.") 
