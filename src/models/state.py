@@ -153,6 +153,63 @@ PLATFORM_LINKEDIN = "LinkedIn"
 SUPPORTED_PLATFORMS = [PLATFORM_INSTAGRAM, PLATFORM_TIKTOK, PLATFORM_LINKEDIN]
 
 
+class ProcessingRequest(BaseModel):
+    """Defines a request to process a video clip based on a selected moment."""
+    source_path: str
+    moment: SelectedMoment
+    output_path: str
+    format_specs: Dict[str, Any] # e.g., {"crop": [x, y, w, h], "resize": [w, h]}
+
+    @field_validator('source_path')
+    @classmethod
+    def validate_source_exists(cls, v):
+        """Ensure the source video file exists."""
+        if not os.path.isfile(v):
+            raise ValueError(f"Source video file not found: {v}")
+        return v
+
+    @field_validator('output_path')
+    @classmethod
+    def validate_output_dir_exists(cls, v):
+        """Ensure the directory for the output file exists."""
+        output_dir = os.path.dirname(v)
+        if output_dir and not os.path.isdir(output_dir):
+             # Attempt to create if it doesn't exist, common case
+             try:
+                 os.makedirs(output_dir, exist_ok=True)
+             except OSError as e:
+                 raise ValueError(f"Output directory cannot be created: {output_dir}, Error: {e}")
+        return v
+
+
+class ProcessingResult(BaseModel):
+    """Represents the outcome of a video processing request."""
+    request: ProcessingRequest
+    status: str  # e.g., "success", "error"
+    output_path: Optional[str] = None
+    duration: Optional[float] = None  # Duration of the processed clip in seconds
+    file_size: Optional[int] = None  # Size of the processed file in bytes
+    error_message: Optional[str] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def check_status_consistency(cls, values):
+        """Ensure result fields are consistent with the status."""
+        status = values.get('status')
+        error_message = values.get('error_message')
+        output_path = values.get('output_path')
+
+        if status == "success" and error_message:
+            raise ValueError("error_message must be None when status is 'success'")
+        if status == "success" and not output_path:
+             raise ValueError("output_path must be provided when status is 'success'")
+        if status == "error" and not error_message:
+            raise ValueError("error_message must be provided when status is 'error'")
+        if status not in ["success", "error"]:
+            raise ValueError("status must be either 'success' or 'error'")
+        return values
+
+
 @dataclass
 class WorkflowState:
     """Represents the state of the video analysis workflow."""
@@ -170,6 +227,8 @@ class WorkflowState:
     current_stage: Optional[str] = None # Name of the current stage running
     stages_completed: List[str] = field(default_factory=list) # Names of stages completed
     checkpoint_data: Dict[str, Any] = field(default_factory=dict) # Data to save/load from checkpoint
+    processing_requests: list[ProcessingRequest] = field(default_factory=list)
+    processing_results: list[ProcessingResult] = field(default_factory=list)
 
     def update_checkpoint(self):
         """Prepares data for checkpointing."""
@@ -188,6 +247,9 @@ class WorkflowState:
             "current_stage": self.current_stage,
             "stages_completed": self.stages_completed,
             # Don't save api_key in checkpoint for security
+            # Convert ProcessingRequest/Result to dicts if needed for serialization
+            "processing_requests": [req.model_dump() for req in self.processing_requests],
+            "processing_results": [res.model_dump() for res in self.processing_results],
         }
 
     @classmethod
@@ -224,6 +286,10 @@ class WorkflowState:
         state.report_path = data.get("report_path")
         state.current_stage = data.get("current_stage")
         state.stages_completed = data.get("stages_completed", [])
+        # Reconstruct processing requests/results
+        state.processing_requests = [ProcessingRequest(**req) for req in data.get("processing_requests", [])]
+        state.processing_results = [ProcessingResult(**res) for res in data.get("processing_results", [])]
+
         # Store the loaded data itself in checkpoint_data for potential reuse/inspection
         state.checkpoint_data = data
-        return state 
+        return state
